@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Geometry Dash Lite</title>
+    <style>
+        :root {
+            --primary-blue: #00e5ff;
+            --dark-bg: #0a0a0a;
+            --glow: 0 0 15px rgba(0, 229, 255, 0.6);
+        }
+
+        body, html { 
+            margin: 0; padding: 0; width: 100%; height: 100%; 
+            background: var(--dark-bg); overflow: hidden; 
+            font-family: 'Segoe UI', Arial, sans-serif; 
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        /* Launcher Screen */
+        #launcher { 
+            position: fixed; z-index: 100; text-align: center; 
+            transition: opacity 0.5s ease;
+        }
+
+        h1 {
+            color: white;
+            font-size: 42px;
+            letter-spacing: 8px;
+            text-transform: uppercase;
+            text-shadow: 0 0 20px var(--primary-blue);
+            margin-bottom: 40px;
+            animation: titlePulse 2s infinite ease-in-out;
+        }
+
+        button { 
+            padding: 18px 60px; font-size: 24px; cursor: pointer; 
+            background: transparent; color: var(--primary-blue); 
+            border: 2px solid var(--primary-blue); border-radius: 50px; 
+            font-weight: bold; text-transform: uppercase;
+            box-shadow: var(--glow); transition: 0.3s;
+            outline: none;
+        }
+
+        button:hover { 
+            background: var(--primary-blue); color: black; 
+            box-shadow: 0 0 30px var(--primary-blue);
+            transform: scale(1.05);
+        }
+
+        /* Loading Screen */
+        #loader { 
+            display: none; color: white; text-align: center; 
+            z-index: 150;
+        }
+
+        #msg {
+            font-size: 14px; letter-spacing: 2px; color: #888;
+            margin-bottom: 15px; text-transform: uppercase;
+        }
+
+        .progress-box { 
+            width: 300px; height: 8px; background: rgba(255,255,255,0.1); 
+            border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); 
+            overflow: hidden;
+        }
+
+        #fill { 
+            width: 0%; height: 100%; background: var(--primary-blue); 
+            box-shadow: var(--glow); transition: width 0.4s ease;
+        }
+
+        /* Animations */
+        @keyframes titlePulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.02); opacity: 0.8; }
+        }
+
+        #gameContainer { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; }
+    </style>
+</head>
+<body>
+
+    <div id="launcher">
+        <h1>GEOMETRY DASH</h1>
+        <button onclick="bootGame()">Play Game</button>
+    </div>
+
+    <div id="loader">
+        <div id="msg">Initialising...</div>
+        <div class="progress-box"><div id="fill"></div></div>
+    </div>
+
+    <div id="gameContainer"></div>
+
+    <script>
+        async function bootGame() {
+            // UI Transition
+            document.getElementById('launcher').style.opacity = '0';
+            setTimeout(() => {
+                document.getElementById('launcher').style.display = 'none';
+                document.getElementById('loader').style.display = 'block';
+            }, 500);
+
+            // STEP 1: Clear IndexedDB (Fixes the 90% hang issue)
+            try {
+                const dbs = await window.indexedDB.databases();
+                dbs.forEach(db => window.indexedDB.deleteDatabase(db.name));
+            } catch(e) { console.log("DB Cleanup Skipped"); }
+            
+            // STEP 2: Load the Engine
+            var script = document.createElement('script');
+            script.src = "https://geometrydash-lite.io/game/lite/Build/UnityLoader.js";
+            
+            script.onload = () => {
+                // Bypass compatibility checks
+                UnityLoader.compatibilityCheck = function(e,t,r){t();};
+                
+                var gameInstance = UnityLoader.instantiate("gameContainer", "https://geometrydash-lite.io/game/lite/Build/geov9.json", {
+                    onProgress: (instance, progress) => {
+                        var val = Math.round(progress * 100);
+                        var fill = document.getElementById("fill");
+                        var msg = document.getElementById("msg");
+
+                        fill.style.width = val + "%";
+                        msg.innerText = "Loading: " + val + "%";
+                        
+                        if (progress >= 0.9) {
+                            msg.innerText = "Finalizing Assets...";
+                        }
+                        if (progress === 1) {
+                            setTimeout(() => { 
+                                document.getElementById("loader").style.opacity = "0";
+                                setTimeout(() => { document.getElementById("loader").style.display = "none"; }, 500);
+                            }, 1000);
+                        }
+                    }
+                });
+            };
+            document.body.appendChild(script);
+        }
+    </script>
+</body>
+</html>
